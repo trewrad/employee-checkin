@@ -1,0 +1,12 @@
+[
+    {
+        "employeeId": "123",
+        "timestamp": "2025-06-14T15:42:51.818255",
+        "type": "in"
+    },
+    {
+        "employeeId": "123",
+        "timestamp": "2025-06-14T15:42:55.076810",
+        "type": "out"
+    }
+]

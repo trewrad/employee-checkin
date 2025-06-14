@@ -1,0 +1,20 @@
+# Node modules
+node_modules/
+
+# Streamlit
+.streamlit/
+
+# Python bytecode
+*.pyc
+*.pyo
+*.pyd
+
+# Temporary files
+*~
+\#*\#
+
+# VS Code
+.vscode/
+
+# Ignore sensitive credential files
+google_sheets_api_key.json

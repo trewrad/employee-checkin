@@ -1,0 +1,7 @@
+{
+  "googleSheets": {
+    "keyFile": "google_sheets_api_key.json",
+    "spreadsheetId": "your_spreadsheet_id"
+  },
+  "adminPassword": "admin"
+}
