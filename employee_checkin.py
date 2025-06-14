@@ -57,21 +57,21 @@ def save_time_entries(data):
         json.dump(data, f, indent=4)
 
 # --- GOOGLE SHEETS INTEGRATION ---
-def get_google_sheets_service(config):
+def get_google_sheets_service():
+    """Builds the Google Sheets service object using credentials from st.secrets."""
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-    creds = service_account.Credentials.from_service_account_file(
-        config["googleSheets"]["keyFile"], scopes=SCOPES)
+    creds = service_account.Credentials.from_service_account_info(
+        st.secrets["google_credentials"], scopes=SCOPES)
     return build('sheets', 'v4', credentials=creds)
 
-def sync_to_google_sheets(config, time_entries, employee_data):
+def sync_to_google_sheets(time_entries, employee_data):
     """
     Attempts to sync a list of time entries to Google Sheets.
-    Adds a header if the sheet is empty and formats the data for readability.
-    This version includes robust error handling for data formatting.
+    This version reads configuration from st.secrets.
     """
     try:
-        service = get_google_sheets_service(config)
-        spreadsheet_id = config["googleSheets"]["spreadsheetId"]
+        service = get_google_sheets_service()
+        spreadsheet_id = st.secrets["googleSheets"]["spreadsheetId"]
         range_name = "Sheet1"
 
         result = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
@@ -81,16 +81,12 @@ def sync_to_google_sheets(config, time_entries, employee_data):
         if is_empty:
             values_to_send.append(["Employee ID", "Employee Name", "Timestamp", "Type"])
 
-        # Prepare the formatted data rows
         for entry in time_entries:
             try:
-                # This block attempts to format the data for each row
                 ts_object = datetime.fromisoformat(entry["timestamp"])
                 friendly_ts = ts_object.strftime("%b %d %I:%M %p")
                 capitalized_type = entry["type"].capitalize()
             except (ValueError, TypeError) as e:
-                # If formatting fails for any reason (e.g., unexpected timestamp format),
-                # fall back to using the raw data for that specific row.
                 st.warning(f"Could not format entry for Employee ID {entry.get('employeeId', 'N/A')}. Error: {e}. Syncing raw data for this row.")
                 friendly_ts = entry.get("timestamp", "INVALID_TIMESTAMP")
                 capitalized_type = entry.get("type", "N/A")
@@ -120,28 +116,28 @@ def sync_to_google_sheets(config, time_entries, employee_data):
     except Exception as e:
         return False, f"Error syncing to Google Sheets: {e}"
 
-def handle_entry(employee_id, entry_type, config, employee_data):
+def handle_entry(employee_id, entry_type, employee_data):
     """
     Handles a new time entry by saving it locally first, then attempting to sync.
     """
-    # 1. Create the new entry dictionary
+    # Create the new entry dictionary
     timestamp = datetime.now().isoformat()
     entry = {"employeeId": employee_id, "timestamp": timestamp, "type": entry_type}
 
-    # 2. Always save the new entry to the local log first
+    # Always save the new entry to the local log first
     time_entries = load_time_entries()
     time_entries.append(entry)
     save_time_entries(time_entries)
 
-    # 3. Attempt to sync just the new entry to Google Sheets
-    success, message = sync_to_google_sheets(config, [entry], employee_data)
+    # Attempt to sync just the new entry to Google Sheets
+    success, message = sync_to_google_sheets([entry], employee_data)
 
-    # 4. Report the result to the user
+    # Report the result to the user
     if success:
         st.success("Check-in/out recorded and synced to Google Sheets.")
     else:
         st.warning("Check-in/out has been recorded locally, but the online sync failed.")
-        st.error(message) # Show the specific error to the user
+        st.error(message)
 
 # --- OFFLINE FALLBACK ---
 def handle_offline_entry(employee_id, timestamp, entry_type):
